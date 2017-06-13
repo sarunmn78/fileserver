@@ -15,6 +15,26 @@ using System.Windows.Shapes;
 
 namespace mydrive_client
 {
+    public class ServerFileInfo
+    {
+        public string fileId { get; set; }
+        public string fileName { get; set; }
+        public string fileModifiedDate { get; set; }
+        public long fileSize { get; set; }
+    }
+
+    public enum TransferType { Download, Upload };
+    public enum TransferState { Complete, Progress, UserPaused };
+
+    public class FileTransfer
+    {
+        public string transferId { get; set; }
+        public string fileId { get; set; }
+        public string fileLocalPath { get; set; }
+        public TransferType transferType { get; set; }
+        public TransferType transferState { get; set; }
+    }
+
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
@@ -23,6 +43,11 @@ namespace mydrive_client
         public MainWindow()
         {
             InitializeComponent();
+        }
+
+        private void uploadButton_Click(object sender, RoutedEventArgs e)
+        {
+
         }
     }
 }

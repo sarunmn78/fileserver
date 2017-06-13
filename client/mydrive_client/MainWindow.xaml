@@ -5,26 +5,57 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:mydrive_client"
         mc:Ignorable="d"
-        Title="MainWindow" Height="350" Width="525">
+        Title="My Drive" Height="350" Width="525">
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="28" />
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-        <Label Grid.Row="0" Grid.ColumnSpan="1" x:Name="label" Content="My Files" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Top" FontFamily="Segoe UI Black" FontSize="14" Foreground="#FF374C98"/>
-        <ListView Grid.Row="1" Grid.ColumnSpan="1" x:Name="listView" VerticalAlignment="Top" HorizontalAlignment="Center">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn/>
-                </GridView>
-            </ListView.View>
-        </ListView>
-        <Button  Grid.Row="2" Grid.Column="0" x:Name="uploadButton" Content="Add" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,5,0,0"/>
-        <Button  Grid.Row="2" Grid.Column="1" x:Name="cancelButton" Content="Exit" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,5,10,0" />
+        <TabControl>
+            <TabItem Header="My Files">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="28" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Label Grid.Row="0" Grid.ColumnSpan="1" x:Name="label" Content="My Files" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Top" FontFamily="Segoe UI Black" FontSize="14" Foreground="#FF374C98"/>
+                    <ListView Grid.Row="1" Grid.ColumnSpan="1" x:Name="fileListView" VerticalAlignment="Top" HorizontalAlignment="Stretch">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Filename" Width="300" DisplayMemberBinding="{Binding fileName}" />
+                                <GridViewColumn Header="Modified Date" Width="100" DisplayMemberBinding="{Binding modifiedDate}" />
+                                <GridViewColumn Header="Size" Width="50" DisplayMemberBinding="{Binding fileSize}" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                    <Button  Grid.Row="2" Grid.Column="0" x:Name="uploadButton" Content="Add" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,5,0,0" Click="uploadButton_Click"/>
+                    <Button  Grid.Row="2" Grid.Column="1" x:Name="cancelButton" Content="Exit" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,5,10,0" />
+                </Grid>
+            </TabItem>
+            <TabItem Header="Transfers">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="28" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Label Grid.Row="0" Grid.ColumnSpan="1" x:Name="transferLabel" Content="Current Transfers" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Top" FontFamily="Segoe UI Black" FontSize="14" Foreground="#FF374C98"/>
+                    <ListView Grid.Row="1" Grid.ColumnSpan="1" x:Name="transferListView" VerticalAlignment="Top" HorizontalAlignment="Stretch">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Filename" Width="300" DisplayMemberBinding="{Binding fileName}" />
+                                <GridViewColumn Header="State" Width="100" DisplayMemberBinding="{Binding modifiedDate}" />
+                             </GridView>
+                        </ListView.View>
+                    </ListView>
+                    <Button  Grid.Row="2" Grid.Column="1" x:Name="transferExitButton" Content="Exit" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,5,10,0" />
+                </Grid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>
