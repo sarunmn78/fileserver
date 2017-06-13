@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Microsoft.Win32;
 
 namespace mydrive_client
 {
@@ -32,7 +33,7 @@ namespace mydrive_client
         public string fileId { get; set; }
         public string fileLocalPath { get; set; }
         public TransferType transferType { get; set; }
-        public TransferType transferState { get; set; }
+        public TransferState transferState { get; set; }
     }
 
     /// <summary>
@@ -40,13 +41,21 @@ namespace mydrive_client
     /// </summary>
     public partial class MainWindow : Window
     {
+        List<FileTransfer> transfer_list = new List<FileTransfer>();
         public MainWindow()
         {
             InitializeComponent();
+            //transferListView.ItemsSource = transfer_list;
         }
 
         private void uploadButton_Click(object sender, RoutedEventArgs e)
         {
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (openFileDialog.ShowDialog() == true)
+            {
+                transferListView.Items.Add(new FileTransfer() { fileLocalPath = openFileDialog.FileName, transferState = TransferState.Progress });
+            }
 
         }
     }

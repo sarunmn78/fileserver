@@ -48,8 +48,8 @@
                     <ListView Grid.Row="1" Grid.ColumnSpan="1" x:Name="transferListView" VerticalAlignment="Top" HorizontalAlignment="Stretch">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="Filename" Width="300" DisplayMemberBinding="{Binding fileName}" />
-                                <GridViewColumn Header="State" Width="100" DisplayMemberBinding="{Binding modifiedDate}" />
+                                <GridViewColumn Header="Filename" Width="300" DisplayMemberBinding="{Binding fileLocalPath}" />
+                                <GridViewColumn Header="State" Width="100" DisplayMemberBinding="{Binding transferState}" />
                              </GridView>
                         </ListView.View>
                     </ListView>
