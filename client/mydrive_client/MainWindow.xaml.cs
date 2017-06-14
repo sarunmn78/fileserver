@@ -41,11 +41,9 @@ namespace mydrive_client
     /// </summary>
     public partial class MainWindow : Window
     {
-        List<FileTransfer> transfer_list = new List<FileTransfer>();
         public MainWindow()
         {
             InitializeComponent();
-            //transferListView.ItemsSource = transfer_list;
         }
 
         private void uploadButton_Click(object sender, RoutedEventArgs e)
