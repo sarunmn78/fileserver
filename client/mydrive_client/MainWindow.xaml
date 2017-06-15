@@ -23,9 +23,9 @@
                     <ListView Grid.Row="1" Grid.ColumnSpan="1" x:Name="fileListView" VerticalAlignment="Top" HorizontalAlignment="Stretch">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="Filename" Width="300" DisplayMemberBinding="{Binding fileName}" />
-                                <GridViewColumn Header="Modified Date" Width="100" DisplayMemberBinding="{Binding modifiedDate}" />
-                                <GridViewColumn Header="Size" Width="50" DisplayMemberBinding="{Binding fileSize}" />
+                                <GridViewColumn Header="Filename" Width="300" DisplayMemberBinding="{Binding file_name}" />
+                                <GridViewColumn Header="Modified Date" Width="100" DisplayMemberBinding="{Binding modified_date}" />
+                                <GridViewColumn Header="Size" Width="50" DisplayMemberBinding="{Binding file_size}" />
                             </GridView>
                         </ListView.View>
                     </ListView>
@@ -48,8 +48,8 @@
                     <ListView Grid.Row="1" Grid.ColumnSpan="1" x:Name="transferListView" VerticalAlignment="Top" HorizontalAlignment="Stretch">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="Filename" Width="300" DisplayMemberBinding="{Binding fileLocalPath}" />
-                                <GridViewColumn Header="State" Width="100" DisplayMemberBinding="{Binding transferState}" />
+                                <GridViewColumn Header="Filename" Width="300" DisplayMemberBinding="{Binding file_localpath}" />
+                                <GridViewColumn Header="State" Width="100" DisplayMemberBinding="{Binding transfer_state}" />
                              </GridView>
                         </ListView.View>
                     </ListView>
