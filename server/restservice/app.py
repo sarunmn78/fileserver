@@ -75,17 +75,35 @@ def upload_complete(file_id):
     if fname == None:
         return jsonify({"error" : "file id is invalid"})
     
+    fsize = os.path.getsize("tempfiles/" + fname)
     # Move the file to data folder
     os.rename("tempfiles/" + fname, "data/" + fname)
     # Update the data filelist with this new file
     data_filelist = get_datafilelist()
-    data_filelist.append({"file_id" : file_id, "file_name" : fname})
+    data_filelist.append({"file_id" : file_id, "file_name" : fname, "file_size" : fsize})
     with open('data/filelist.json', 'w') as outfile:
         json.dump(data_filelist, outfile)
     
     # Remove the item form the transfer file list
     remove_transferlist(file_id)
     return jsonify({"error" : "success"})
+
+@app.route('/mydrive/download/<file_id>/<int:start_offset>/<int:size>', methods=['GET'])
+def download_data(file_id, start_offset, size):
+    data = request.get_data()
+    fname = get_filename_id(file_id)
+    if fname == None:
+        return jsonify({"error" : "file id is invalid"})
+    
+    with open("tempfiles/" + fname, 'rb') as infile:
+        infile.seek(start_offset, 0)
+        data = infile.read(size)
+        infile.close()
+        response = make_response(data)
+        response.headers['Content-Type'] = 'multipart/form-data'
+        return response
+
+    return jsonify({"error" : "permission error"})
 
 @app.route('/mydrive/list', methods=['GET'])
 def get_filelist():

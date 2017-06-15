@@ -21,10 +21,14 @@
                     </Grid.ColumnDefinitions>
                     <Label Grid.Row="0" Grid.ColumnSpan="1" x:Name="label" Content="My Files" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Top" FontFamily="Segoe UI Black" FontSize="14" Foreground="#FF374C98"/>
                     <ListView Grid.Row="1" Grid.ColumnSpan="1" x:Name="fileListView" VerticalAlignment="Top" HorizontalAlignment="Stretch">
+                        <ListView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Download" Name="DownloadContextMenu"  Click="DownloadContextMenu_OnClick"/>
+                            </ContextMenu>
+                        </ListView.ContextMenu>
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="Filename" Width="300" DisplayMemberBinding="{Binding file_name}" />
-                                <GridViewColumn Header="Modified Date" Width="100" DisplayMemberBinding="{Binding modified_date}" />
                                 <GridViewColumn Header="Size" Width="50" DisplayMemberBinding="{Binding file_size}" />
                             </GridView>
                         </ListView.View>

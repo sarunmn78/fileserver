@@ -38,6 +38,7 @@ namespace mydrive_client
         public TransferType transfer_type { get; set; }
         public TransferState transfer_state { get; set; }
         public long bytes_transfered { get; set; }
+        public long total_size { get; set; }
     }
 
     public class WebResult
@@ -55,6 +56,7 @@ namespace mydrive_client
         public static string INIT_UPLOAD_URL = BASE_URL + "/mydrive/initupload";
         public static string UPLOAD_APPEND_URL = BASE_URL + "/mydrive/appenddata";
         public static string UPLOAD_COMPLETE_URL = BASE_URL + "/mydrive/uploaddone";
+        public static string DOWNLOAD_DATA_URL = BASE_URL + "/mydrive/download";
 
         Dictionary<string, FileTransfer> pendingTransferList = new Dictionary<string, FileTransfer>();
 
@@ -88,7 +90,7 @@ namespace mydrive_client
 
                 var token = cancellationTokenSource.Token;
 
-                Task.Run(() =>  UploadFile(openFileDialog.FileName,
+                Task.Run(() => UploadFile(openFileDialog.FileName,
                                 token,
                                 progressUpload));
 
@@ -106,7 +108,7 @@ namespace mydrive_client
             {
                 json_data = reader.ReadToEnd();
                 var filelist = JsonConvert.DeserializeObject<List<ServerFileInfo>>(json_data);
-                foreach(ServerFileInfo item in filelist)
+                foreach (ServerFileInfo item in filelist)
                 {
                     this.Dispatcher.BeginInvoke(new Action(() =>
                         fileListView.Items.Add(item)));
@@ -138,7 +140,7 @@ namespace mydrive_client
                     }
                 }
             }
-            catch(Exception)
+            catch (Exception)
             { }
             return -1;
         }
@@ -166,7 +168,7 @@ namespace mydrive_client
                     return 0;
                 }
             }
-            catch(Exception)
+            catch (Exception)
             { }
             return -1;
         }
@@ -191,6 +193,7 @@ namespace mydrive_client
         private void InitUpload(string localfilepath)
         {
             string fname = System.IO.Path.GetFileName(localfilepath);
+            //long length = new System.IO.FileInfo(localfilepath).Length;
             string url = String.Format("{0}/{1}", INIT_UPLOAD_URL, Uri.EscapeDataString(fname));
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
@@ -199,14 +202,15 @@ namespace mydrive_client
             {
                 string json_data = reader.ReadToEnd();
                 FileTransfer transferobj = JsonConvert.DeserializeObject<FileTransfer>(json_data);
-                if(string.IsNullOrEmpty(transferobj.file_id) == false)
+                if (string.IsNullOrEmpty(transferobj.file_id) == false)
                 {
                     transferobj.file_localpath = localfilepath;
+                    transferobj.transfer_type = TransferType.Upload;
                     transferobj.transfer_state = TransferState.Uploading;
                     pendingTransferList.Add(transferobj.file_id, transferobj);
                     this.Dispatcher.BeginInvoke(new Action(() =>
                             transferListView.Items.Add(transferobj)));
-                    if(UploadFile(transferobj.file_id) == 0)
+                    if (UploadFile(transferobj.file_id) == 0)
                     {
                         EndUpload(transferobj.file_id);
                     }
@@ -217,7 +221,67 @@ namespace mydrive_client
         private void UploadFile(string localfilepath, CancellationToken token, Action progressReport)
         {
             InitUpload(localfilepath);
-            
+
         }
-    }
+
+        private int DownloadDataFromServer(string file_id, ref byte[] data, long offset, ref int length)
+        {
+            try
+            {
+                string url = String.Format("{0}/{1}/{2}/{3}", DOWNLOAD_DATA_URL, Uri.EscapeDataString(file_id), offset, length);
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                using (Stream stream = response.GetResponseStream())
+                {
+                    int count = stream.Read(data, 0, length);
+                    if (count > 0)
+                        return 0;
+                }
+            }
+            catch (Exception)
+            { }
+            return -1;
+        }
+
+        private int DownloadFileChunk(string file_id)
+        {
+            try
+            {
+                FileTransfer transferobj = pendingTransferList[file_id];
+                byte[] buffer = new byte[50 * 1024]; // 50KB
+                int bytesToRead = 0;
+                if (DownloadDataFromServer(file_id, ref buffer, transferobj.bytes_transfered, ref bytesToRead) == 0)
+                {
+                    transferobj.bytes_transfered += bytesToRead;
+                    using (var outFileSteam = new FileStream(transferobj.file_localpath, FileMode.Append))
+                    {
+                        outFileSteam.Write(buffer, 0, bytesToRead);
+                    }
+                }
+            }
+            catch (Exception)
+            { }
+            return -1;
+        }
+        private void DownloadFile(string file_id, string file_name)
+        {
+            FileTransfer transferobj = new FileTransfer();
+            transferobj.bytes_transfered = 0;
+            string local_folder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MyDrive");
+            System.IO.Directory.CreateDirectory(local_folder);
+            transferobj.file_localpath = System.IO.Path.Combine(local_folder, file_name);
+            transferobj.transfer_type = TransferType.Download;
+            transferobj.transfer_state = TransferState.Downloading;
+        }
+
+        private void DownloadContextMenu_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (fileListView.SelectedIndex > -1)
+            {
+                ServerFileInfo serverFileInfo = new ServerFileInfo();
+                serverFileInfo = (ServerFileInfo)fileListView.SelectedItem; // casting the list view 
+                DownloadFile(serverFileInfo.file_id, serverFileInfo.file_name);
+            }
+        }
+   }
 }
