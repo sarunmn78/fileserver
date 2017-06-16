@@ -1,5 +1,5 @@
 #!flask/bin/python
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, make_response
 from os import listdir
 from os.path import isfile, join
 import uuid
@@ -24,10 +24,19 @@ def get_transferlist():
             transfer_list = json.load(data_file)
     return transfer_list        
 
-def get_filename_id(file_id):
+def get_transferfilename_id(file_id):
     fname = "";
     transfer_list = get_transferlist()
     fnames = [f["file_name"] for f in transfer_list if f["file_id"] == file_id]
+    if len(fnames) > 0:
+        fname = fnames[0]
+        return fname
+    return None;
+
+def get_datafilename_id(file_id):
+    fname = "";
+    data_list = get_datafilelist()
+    fnames = [f["file_name"] for f in data_list if f["file_id"] == file_id]
     if len(fnames) > 0:
         fname = fnames[0]
         return fname
@@ -58,7 +67,7 @@ def init_upload(fname):
 @app.route('/mydrive/appenddata/<file_id>', methods=['POST'])
 def append_to_file(file_id):
     data = request.get_data()
-    fname = get_filename_id(file_id)
+    fname = get_transferfilename_id(file_id)
     if fname == None:
         return jsonify({"error" : "file id is invalid"})
     
@@ -71,7 +80,7 @@ def append_to_file(file_id):
 
 @app.route('/mydrive/uploaddone/<file_id>', methods=['GET'])
 def upload_complete(file_id):    
-    fname = get_filename_id(file_id)
+    fname = get_transferfilename_id(file_id)
     if fname == None:
         return jsonify({"error" : "file id is invalid"})
     
@@ -90,19 +99,23 @@ def upload_complete(file_id):
 
 @app.route('/mydrive/download/<file_id>/<int:start_offset>/<int:size>', methods=['GET'])
 def download_data(file_id, start_offset, size):
+    print file_id
     data = request.get_data()
-    fname = get_filename_id(file_id)
+    fname = get_datafilename_id(file_id)
     if fname == None:
+        print "filename is not found"
         return jsonify({"error" : "file id is invalid"})
     
-    with open("tempfiles/" + fname, 'rb') as infile:
+    with open("data/" + fname, 'rb') as infile:
         infile.seek(start_offset, 0)
         data = infile.read(size)
+        print len(data)
         infile.close()
         response = make_response(data)
         response.headers['Content-Type'] = 'multipart/form-data'
         return response
-
+    
+    print "permission error"
     return jsonify({"error" : "permission error"})
 
 @app.route('/mydrive/list', methods=['GET'])

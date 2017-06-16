@@ -31,6 +31,8 @@ namespace mydrive_client
     public enum TransferType { Download, Upload };
     public enum TransferState { Complete, Uploading, Downloading, Paused, UserPaused };
 
+    public enum TransferStatus { CHUNK_TRANSFER_SUCCESS, FILE_TRANSFER_COMPLETE, FILE_ID_NOT_EXIST, SEVRER_NOTREACHABLE, INVALID_ERROR};
+    
     public class FileTransfer
     {
         public string file_id { get; set; }
@@ -63,10 +65,75 @@ namespace mydrive_client
         Action cancelUpload;
         Action pauseUpload;
         Action progressUpload;
+
+        bool thread_running_ = true;
+        private AutoResetEvent newTransferEvent = new AutoResetEvent(false);
         public MainWindow()
         {
             InitializeComponent();
             Task.Run(() => GetAllFileList());
+            Thread newThread = new Thread(backgroundWorker_ProcessTransfers);
+            newThread.Start();
+        }
+
+        private void backgroundWorker_ProcessTransfers(object data)
+        {
+            while(thread_running_)
+            {
+                newTransferEvent.WaitOne(5000);
+                while (pendingTransferList.Count > 0)
+                {
+                    foreach (KeyValuePair<string, FileTransfer> entry in pendingTransferList)
+                    {
+                        TransferStatus status = TransferStatus.INVALID_ERROR;
+                        FileTransfer transferobj = entry.Value;
+                        if(transferobj.transfer_type == TransferType.Upload)
+                        {
+                            status = UploadFileChunk(transferobj.file_id);
+                            if (status == TransferStatus.FILE_TRANSFER_COMPLETE)
+                            {
+                                // File transfer complete. remove item from the list and start 
+                                // a new enumeration
+                                RemoveItemFromPendingTransferList(transferobj.file_id);
+                                break;
+                            }
+                        }
+                        else if(transferobj.transfer_type == TransferType.Download)
+                        {
+                            if(DownloadFileChunk(transferobj.file_id) != 0)
+                            {
+                                // Download chunk failed Handle it
+                                RemoveItemFromPendingTransferList(transferobj.file_id);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void AddItemToPendingTransferList(string file_id, FileTransfer item)
+        {
+            pendingTransferList.Add(file_id, item);
+            this.Dispatcher.BeginInvoke(new Action(() =>
+                            transferListView.Items.Add(item)));
+        }
+
+        private void RemoveItemFromTransferListView(string file_id)
+        {
+            foreach (FileTransfer item in transferListView.Items)
+            {
+                if (item.file_id == file_id)
+                {
+                    transferListView.Items.Remove(item);
+                    break;
+                }
+            }
+        }
+        private void RemoveItemFromPendingTransferList(string file_id)
+        {
+            pendingTransferList.Remove(file_id);
+            this.Dispatcher.BeginInvoke(new Action(() => RemoveItemFromTransferListView(file_id)));
         }
 
         private void uploadButton_Click(object sender, RoutedEventArgs e)
@@ -91,8 +158,8 @@ namespace mydrive_client
                 var token = cancellationTokenSource.Token;
 
                 Task.Run(() => UploadFile(openFileDialog.FileName,
-                                token,
-                                progressUpload));
+                                token
+                                ));
 
             }
 
@@ -145,32 +212,39 @@ namespace mydrive_client
             return -1;
         }
 
-        private int UploadFile(string file_id)
+        private TransferStatus UploadFileChunk(string file_id)
         {
             try
             {
                 FileTransfer transferobj = pendingTransferList[file_id];
                 using (var inFileSteam = new FileStream(transferobj.file_localpath, FileMode.Open))
                 {
+                    inFileSteam.Seek(transferobj.bytes_transfered, SeekOrigin.Begin);
                     byte[] buffer = new byte[50 * 1024]; // 50KB
                     int bytesRead = inFileSteam.Read(buffer, 0, buffer.Length);
 
-                    while (bytesRead > 0)
+                    if (bytesRead > 0)
                     {
                         // Send data to webserver
                         if (UploadDataToServer(file_id, buffer, bytesRead) == 0)
                         {
                             transferobj.bytes_transfered += bytesRead;
+                            // Check if we have completed the transfer
+                            if(transferobj.bytes_transfered >= transferobj.total_size)
+                            {
+                                if(EndUpload(file_id) == 0)
+                                {
+                                    return TransferStatus.FILE_TRANSFER_COMPLETE;
+                                }
+                            }
                         }
-                        inFileSteam.Seek(transferobj.bytes_transfered, SeekOrigin.Begin);
-                        bytesRead = inFileSteam.Read(buffer, 0, buffer.Length);
                     }
-                    return 0;
+                    return TransferStatus.CHUNK_TRANSFER_SUCCESS;
                 }
             }
             catch (Exception)
             { }
-            return -1;
+            return TransferStatus.SEVRER_NOTREACHABLE;
         }
 
         private int EndUpload(string file_id)
@@ -205,37 +279,44 @@ namespace mydrive_client
                 if (string.IsNullOrEmpty(transferobj.file_id) == false)
                 {
                     transferobj.file_localpath = localfilepath;
+                    transferobj.total_size = new System.IO.FileInfo(localfilepath).Length;
                     transferobj.transfer_type = TransferType.Upload;
                     transferobj.transfer_state = TransferState.Uploading;
-                    pendingTransferList.Add(transferobj.file_id, transferobj);
-                    this.Dispatcher.BeginInvoke(new Action(() =>
-                            transferListView.Items.Add(transferobj)));
-                    if (UploadFile(transferobj.file_id) == 0)
-                    {
-                        EndUpload(transferobj.file_id);
-                    }
+                    AddItemToPendingTransferList(transferobj.file_id, transferobj);
+                    
+                    //if (UploadFile(transferobj.file_id) == 0)
+                    //{
+                    //    EndUpload(transferobj.file_id);
+                    //}
 
                 }
             }
         }
-        private void UploadFile(string localfilepath, CancellationToken token, Action progressReport)
+        private void UploadFile(string localfilepath, CancellationToken token)
         {
             InitUpload(localfilepath);
-
         }
 
-        private int DownloadDataFromServer(string file_id, ref byte[] data, long offset, ref int length)
+        private int DownloadDataFromServer(string file_id, ref byte[] data, long offset, int bytes_to_read, ref int bytes_read)
         {
             try
             {
-                string url = String.Format("{0}/{1}/{2}/{3}", DOWNLOAD_DATA_URL, Uri.EscapeDataString(file_id), offset, length);
+                string url = String.Format("{0}/{1}/{2}/{3}", DOWNLOAD_DATA_URL, Uri.EscapeDataString(file_id), offset, bytes_to_read);
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
                 using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
                 using (Stream stream = response.GetResponseStream())
                 {
-                    int count = stream.Read(data, 0, length);
-                    if (count > 0)
-                        return 0;
+                    int count = 0;
+                    do
+                    {
+                        count = stream.Read(data, bytes_read, (bytes_to_read - bytes_read));
+                        if (count > 0)
+                            bytes_read += count;
+                        else if (count == 0)
+                            return 0;
+
+                    } while (bytes_read < bytes_to_read);
+                    return 0;
                 }
             }
             catch (Exception)
@@ -243,35 +324,49 @@ namespace mydrive_client
             return -1;
         }
 
-        private int DownloadFileChunk(string file_id)
+        private TransferStatus DownloadFileChunk(string file_id)
         {
             try
             {
                 FileTransfer transferobj = pendingTransferList[file_id];
                 byte[] buffer = new byte[50 * 1024]; // 50KB
-                int bytesToRead = 0;
-                if (DownloadDataFromServer(file_id, ref buffer, transferobj.bytes_transfered, ref bytesToRead) == 0)
+                int bytesToRead = 50 * 1024;
+                int bytesRead = 0;
+                if (DownloadDataFromServer(file_id, ref buffer, transferobj.bytes_transfered, bytesToRead, ref bytesRead) == 0)
                 {
-                    transferobj.bytes_transfered += bytesToRead;
-                    using (var outFileSteam = new FileStream(transferobj.file_localpath, FileMode.Append))
+                    transferobj.bytes_transfered += bytesRead;
+                    if (bytesRead > 0)
                     {
-                        outFileSteam.Write(buffer, 0, bytesToRead);
+                        using (var outFileSteam = new FileStream(transferobj.file_localpath, FileMode.Append))
+                        {
+                            outFileSteam.Write(buffer, 0, bytesRead);
+                        }
                     }
+
+                    if(transferobj.bytes_transfered >= transferobj.total_size)
+                    {
+                        return TransferStatus.FILE_TRANSFER_COMPLETE;
+                    }
+
+                    return TransferStatus.CHUNK_TRANSFER_SUCCESS;
                 }
             }
             catch (Exception)
             { }
-            return -1;
+            return TransferStatus.SEVRER_NOTREACHABLE;
         }
-        private void DownloadFile(string file_id, string file_name)
+        private void DownloadFile(string file_id, string file_name, long file_size)
         {
             FileTransfer transferobj = new FileTransfer();
+            transferobj.file_id = file_id;
+            transferobj.total_size = file_size;
             transferobj.bytes_transfered = 0;
             string local_folder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MyDrive");
             System.IO.Directory.CreateDirectory(local_folder);
             transferobj.file_localpath = System.IO.Path.Combine(local_folder, file_name);
             transferobj.transfer_type = TransferType.Download;
             transferobj.transfer_state = TransferState.Downloading;
+            AddItemToPendingTransferList(transferobj.file_id, transferobj);
         }
 
         private void DownloadContextMenu_OnClick(object sender, RoutedEventArgs e)
@@ -280,7 +375,7 @@ namespace mydrive_client
             {
                 ServerFileInfo serverFileInfo = new ServerFileInfo();
                 serverFileInfo = (ServerFileInfo)fileListView.SelectedItem; // casting the list view 
-                DownloadFile(serverFileInfo.file_id, serverFileInfo.file_name);
+                DownloadFile(serverFileInfo.file_id, serverFileInfo.file_name, serverFileInfo.file_size);
             }
         }
    }
