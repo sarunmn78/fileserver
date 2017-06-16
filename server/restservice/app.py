@@ -5,6 +5,7 @@ from os.path import isfile, join
 import uuid
 import json
 import os
+import time
 
 app = Flask(__name__)
 
@@ -22,7 +23,7 @@ def get_transferlist():
     if os.path.exists(transfer_filename):
         with open(transfer_filename) as data_file:    
             transfer_list = json.load(data_file)
-    return transfer_list        
+    return transfer_list           
 
 def get_transferfilename_id(file_id):
     fname = "";
@@ -71,6 +72,7 @@ def append_to_file(file_id):
     if fname == None:
         return jsonify({"error" : "file id is invalid"})
     
+    time.sleep(1)
     with open("tempfiles/" + fname, 'ab') as outfile:
         outfile.write(data)
         outfile.close()
@@ -97,6 +99,15 @@ def upload_complete(file_id):
     remove_transferlist(file_id)
     return jsonify({"error" : "success"})
 
+@app.route('/mydrive/pendingfileinfo/<file_id>', methods=['GET'])
+def get_pendingtransfers(file_id):
+    fname = get_transferfilename_id(file_id)
+    if fname == None:
+        return jsonify({"error" : "file id is invalid"})
+    
+    fsize = os.path.getsize("tempfiles/" + fname)
+    return jsonify({"error":"success", "file_id": file_id, "file_size": fsize})
+
 @app.route('/mydrive/download/<file_id>/<int:start_offset>/<int:size>', methods=['GET'])
 def download_data(file_id, start_offset, size):
     print file_id
@@ -105,11 +116,11 @@ def download_data(file_id, start_offset, size):
     if fname == None:
         print "filename is not found"
         return jsonify({"error" : "file id is invalid"})
-    
+    time.sleep(1)
     with open("data/" + fname, 'rb') as infile:
         infile.seek(start_offset, 0)
         data = infile.read(size)
-        print len(data)
+        #print len(data)
         infile.close()
         response = make_response(data)
         response.headers['Content-Type'] = 'multipart/form-data'

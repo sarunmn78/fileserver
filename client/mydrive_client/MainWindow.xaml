@@ -52,8 +52,17 @@
                     <ListView Grid.Row="1" Grid.ColumnSpan="1" x:Name="transferListView" VerticalAlignment="Top" HorizontalAlignment="Stretch">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="Filename" Width="300" DisplayMemberBinding="{Binding file_localpath}" />
-                                <GridViewColumn Header="State" Width="100" DisplayMemberBinding="{Binding transfer_state}" />
+                                <GridViewColumn Header="Filename" Width="300">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel>
+                                                <Label Content="{Binding Path=file_localpath}" />
+                                                <ProgressBar Width="300" Height="20" Maximum="100" Value="{Binding TransferProgress}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="State" Width="100" DisplayMemberBinding="{Binding TransferMessage}" />
                              </GridView>
                         </ListView.View>
                     </ListView>
